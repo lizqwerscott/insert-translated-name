@@ -152,13 +152,18 @@
   "Search and refacotry code base on ripgrep."
   :group 'insert-translated-name)
 
-(defcustom insert-translated-name-program "crow"
+(defcustom insert-translated-name-program "google"
   "Use `crow' or `ollama' to translate input."
   :group 'insert-translated-name
   :type 'string)
 
 (defcustom insert-translated-name-crow-engine "google"
   "the crow app engine"
+  :group 'insert-translated-name
+  :type 'string)
+
+(defcustom insert-translated-name-google-engine-url "http://127.0.0.1:7777"
+  "the google engine url"
   :group 'insert-translated-name
   :type 'string)
 
@@ -170,6 +175,11 @@
 (defvar insert-translated-name-ollama-file (expand-file-name "ollama.py" (if load-file-name
                                                                              (file-name-directory load-file-name)
                                                                            default-directory)))
+
+(defvar insert-translated-name-google-file (expand-file-name "google.py"
+                                                             (if load-file-name
+                                                                 (file-name-directory load-file-name)
+                                                               default-directory)))
 
 (defvar insert-translated-name-origin-style-mode-list
   '(text-mode erc-mode rcirc-mode))
@@ -416,12 +426,14 @@
   (when (string= event "finished\n")
     (with-current-buffer (process-buffer process)
       (let ((output (buffer-string)))
+        (message "output: %s" output)
         (insert-translated-name-update-translation-in-buffer
          insert-translated-name-word
          insert-translated-name-style
          (pcase insert-translated-name-program
            ("crow" (alist-get 'translation (json-read-from-string output)))
-           ("ollama" (replace-regexp-in-string "\\'\\|\\'\\|\\.\\|\\,\\|\\?\\|\\!" "" (string-trim output))))
+           ("ollama" (replace-regexp-in-string "\\'\\|\\'\\|\\.\\|\\,\\|\\?\\|\\!" "" (string-trim output)))
+           ("google" (alist-get 'translation (json-read-from-string output))))
          insert-translated-name-buffer-name
          insert-translated-name-placeholder)
         ))))
@@ -449,7 +461,12 @@
                      "insert-translated-name"
                      " *insert-translated-name*"
                      "python" insert-translated-name-ollama-file (format "'%s'" word)
-                     )))))
+                     ))
+                   ("google"
+                    (start-process
+                     "insert-translated-name"
+                     " *insert-translated-name*"
+                     "python" insert-translated-name-google-file insert-translated-name-google-engine-url (format "'%s'" word))))))
     (set-process-sentinel process 'insert-translated-name-process-sentinel)))
 
 (provide 'insert-translated-name)
